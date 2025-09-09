@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Footballer Career Wheel — With Logos & Career Card</title>
+<style>
+:root{
+  --bg:#071028; --card:#071833; --accent:#ffd166; --muted:#9fb0c8;
+  --radius:16px;
+}
+*{box-sizing:border-box;font-family:Inter,system-ui,Roboto,Arial,sans-serif}
+html,body{margin:0;padding:0;background:linear-gradient(180deg,var(--bg),#081229);color:#eaf6ff;min-height:100vh}
+.app{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
+.container{width:100%;max-width:920px}
+.center{display:flex;flex-direction:column;align-items:center;gap:12px}
+h1{font-size:24px;margin:0}
+input[type="text"]{width:80%;max-width:360px;padding:12px;border-radius:12px;border:none;font-size:16px;margin-top:8px}
+.flags{display:flex;gap:14px;margin-top:12px;align-items:center}
+.flag-img{width:92px;height:58px;object-fit:cover;cursor:pointer;border:3px solid transparent;border-radius:8px}
+.flag-selected{border-color:var(--accent);box-shadow:0 8px 24px rgba(0,0,0,.6)}
+.btn{background:linear-gradient(180deg,var(--accent), #ffb23b);color:#061426;padding:14px 22px;border-radius:14px;border:none;font-weight:800;font-size:18px;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.board{margin-top:18px;background:rgba(255,255,255,0.03);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;align-items:center}
+.wheels{display:flex;flex-wrap:wrap;gap:14px;justify-content:center}
+.wheel-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;width:170px}
+canvas{width:170px;height:170px;border-radius:50%;background:transparent;box-shadow:0 8px 24px rgba(0,0,0,.55)}
+.pointer{width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:22px solid var(--accent);margin-top:-10px}
+.result{margin-top:12px;text-align:center}
+.history{margin-top:12px;width:100%;max-width:860px;background:rgba(255,255,255,0.02);border-radius:12px;padding:10px;max-height:200px;overflow:auto}
+.history p{margin:6px 0;font-size:14px;color:var(--muted)}
+.card-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:linear-gradient(180deg,#0b2236,#07233a);padding:14px;border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,.7);z-index:60;min-width:280px;max-width:92%;display:none}
+.card-header{display:flex;align-items:center;gap:12px}
+.club-logo{width:72px;height:72px;border-radius:10px;object-fit:contain;background:rgba(255,255,255,0.03);padding:6px}
+.card-body{margin-top:8px}
+.card-row{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
+.close-card{position:absolute;right:8px;top:8px;background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer}
+.small{font-size:13px;color:var(--muted)}
+@media (max-width:520px){
+  .flag-img{width:72px;height:46px}
+  canvas{width:150px;height:150px}
+  .wheel-wrap{width:150px}
+  input[type="text"]{width:90%}
+  window.addEventListener('load', ()=>{
+  updateLeaderboard();
+});
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="container center">
+<div id="leaderboardContainer">
+  <h3>Leaderboard / Sıralama</h3>
+  <div id="leaderboardDiv">
+    <!-- Burada JS nəticələri göstərəcək -->
+  </div>
+</div>
+
+    <!-- START SCREEN -->
+    <div id="startScreen" class="center" style="padding:18px">
+      <h1 id="titleMain">Öz karyeranı qur</h1>
+      <input id="playerNameInput" type="text" placeholder="Adınızı daxil edin">
+      <div class="flags">
+        <img id="flagUK" class="flag-img" src="https://flagcdn.com/w320/gb.png" title="English">
+        <img id="flagAZ" class="flag-img flag-selected" src="https://flagcdn.com/w320/az.png" title="Azərbaycan">
+      </div>
+      <button id="startBtn" class="btn" style="margin-top:12px">Başla</button>
+      <div class="small" style="margin-top:10px">Dil seç: bayrağı seçərək dəyişə bilərsən</div>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="gameScreen" class="center">
+      <div style="display:flex;gap:12px;align-items:center;justify-content:center;width:100%;flex-direction:column">
+        <div class="board">
+          <div class="wheels" role="application" aria-label="Wheels area">
+            <div class="wheel-wrap">
+              <canvas id="clubWheel" width="340" height="340"></canvas>
+              <div class="pointer" aria-hidden="true"></div>
+              <div id="clubLabel">Klub</div>
+            </div>
+            <div class="wheel-wrap">
+              <canvas id="positionWheel" width="340" height="340"></canvas>
+              <div class="pointer" aria-hidden="true"></div>
+              <div id="positionLabel">Mövqe</div>
+            </div>
+            <div class="wheel-wrap">
+              <canvas id="eventWheel" width="340" height="340"></canvas>
+              <div class="pointer" aria-hidden="true"></div>
+              <div id="eventLabel">Hadisə</div>
+            </div>
+            <div class="wheel-wrap">
+              <canvas id="nationalWheel" width="340" height="340"></canvas>
+              <div class="pointer" aria-hidden="true"></div>
+              <div id="nationalLabel">Milliyət</div>
+            </div>
+            <div class="wheel-wrap">
+  <canvas id="ageWheel" width="340" height="340"></canvas>
+  <div class="pointer" aria-hidden="true"></div>
+  <div id="ageLabel">Yaş</div>
+</div>
+          </div>
+
+          <div style="text-align:center;margin-top:12px">
+            <button id="spinBtn" class="btn">Çarxı fırlat</button>
+          </div>
+
+          <div id="result" class="result small" aria-live="polite" style="margin-top:12px">
+            <p>Spin düyməsini bas və karyeranı gör.</p>
+          </div>
+        </div>
+
+        <div class="history" aria-live="polite">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong>📜 Tarixçə</strong>
+            <button id="clearHistory" class="btn" style="padding:6px 10px;font-size:13px">Təmizlə</button>
+          </div>
+          <div id="historyLog" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Career Card Modal -->
+<div id="careerCard" class="card-modal" role="dialog" aria-modal="true">
+  <button id="closeCard" class="close-card">✕</button>
+  <div class="card-header">
+    <img id="cardLogo" class="club-logo" src="" alt="club logo">
+    <div>
+      <div id="cardName" style="font-weight:800;font-size:18px">Player</div>
+      <div id="cardClub" class="small">Club</div>
+    </div>
+      <div id="cardAge"></div>
+  </div>
+  <div class="card-body">
+    <div class="card-row"><div class="small">Mövqe</div><div id="cardPos"></div></div>
+    <div class="card-row"><div class="small">Milliyət</div><div id="cardNat"></div></div>
+    <div class="card-row"><div class="small">Hadisə</div><div id="cardEvent"></div></div>
+    <div class="card-row"><div class="small">Stats</div><div id="cardStats"></div></div>
+    <div style="text-align:center;margin-top:10px">
+      <button id="closeCardBtn" class="btn" style="padding:10px 14px;font-size:15px">Bağla</button>
+    </div>
+  </div>
+</div>
+
+<!-- background music (autoplay blocked on many browsers; play after user interaction) -->
+<audio id="bgMusic" loop src="https://actions.google.com/sounds/v1/sports/soccer_crowd_cheer_long.ogg"></audio>
+<!-- spin click sound -->
+<audio id="spinSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
+<script>
+/* ================= Configuration ================= */
+let lang = 'az';           // default language
+let playerName = '';
+// Data lists (clubs include mapping to logo URLs)
+const clubs = [
+  {name:"Real Madrid", logo:"https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg"},
+  {name:"Barcelona", logo:"https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg"},
+  {name:"Manchester United", logo:"https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg"},
+  {name:"Liverpool", logo:"https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg"},
+  {name:"Bayern Munich", logo:"https://upload.wikimedia.org/wikipedia/en/1/1f/FC_Bayern_München_logo_%282017%29.svg"},
+  {name:"Juventus", logo:"https://upload.wikimedia.org/wikipedia/en/2/2d/Juventus_FC_2017_logo.svg"},
+  {name:"Paris SG", logo:"https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg"},
+  {name:"Chelsea", logo:"https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg"},
+  {name:"Arsenal", logo:"https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg"},
+  {name:"Manchester City", logo:"https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg"},
+  {name:"AC Milan", logo:"https://upload.wikimedia.org/wikipedia/commons/d/d0/Logo_of_AC_Milan.svg"},
+  {name:"Inter Milan", logo:"https://upload.wikimedia.org/wikipedia/en/0/0b/Inter_Milan.svg"},
+  {name:"Atletico Madrid", logo:"https://upload.wikimedia.org/wikipedia/en/f/f4/Atletico_Madrid_2017_logo.svg"},
+  {name:"Tottenham", logo:"https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg"},
+  {name:"Borussia Dortmund", logo:"https://upload.wikimedia.org/wikipedia/commons/6/67/Borussia_Dortmund_logo.svg"},
+  {name:"Napoli", logo:"https://upload.wikimedia.org/wikipedia/commons/2/2d/SSC_Napoli.svg"},
+  {name:"Ajax", logo:"https://upload.wikimedia.org/wikipedia/en/7/79/Ajax_Amsterdam.svg"},
+  {name:"Sevilla", logo:"https://upload.wikimedia.org/wikipedia/en/3/3b/Sevilla_FC_logo.svg"},
+  {name:"Lyon", logo:"https://upload.wikimedia.org/wikipedia/en/2/2e/Olympique_Lyonnais.svg"},
+  {name:"Benfica", logo:"https://upload.wikimedia.org/wikipedia/en/a/a2/SL_Benfica_logo.svg"},
+  {name:"Porto", logo:"https://upload.wikimedia.org/wikipedia/en/f/f1/FC_Porto.svg"},
+  {name:"RB Leipzig", logo:"https://upload.wikimedia.org/wikipedia/en/0/04/RB_Leipzig_2014_logo.svg"},
+  {name:"Monaco", logo:"https://upload.wikimedia.org/wikipedia/en/b/ba/AS_Monaco_FC.svg"},
+  {name:"AS Roma", logo:"https://upload.wikimedia.org/wikipedia/en/f/f7/AS_Roma_logo_%282017%29.svg"},
+  {name:"Sporting CP", logo:"https://upload.wikimedia.org/wikipedia/en/3/3e/Sporting_Clube_de_Portugal_%28Logo%29.svg"},
+  {name:"Galatasaray", logo:"https://upload.wikimedia.org/wikipedia/en/3/35/Galatasaray_Sports_Club_Logo.svg"},
+  {name:"Fenerbahçe", logo:"https://upload.wikimedia.org/wikipedia/en/3/39/Fenerbahce_logo.svg"}
+];
+const positions = ["Goalkeeper","Defender","Midfielder","Striker","Forward","Winger"];
+const events = ["World Cup Winner","Champions League Winner","Serious Injury","Golden Boot","Ballon d'Or","Record Transfer","Club Legend","Early Retirement"];
+const nations = [
+  "AZ","ENG","ESP","FRA","GER","ITA","POR","BRA","ARG","NED",
+  "BEL","SWE","DEN","TUR","RUS","MEX","USA","JPN","KOR","NGA",
+  "CRO","SUI","POL","CMR","EGY"
+];
+const ages = ["17-22 yaş","22-27 yaş","27-32 yaş","32-37 yaş","37-40 yaş"];
+
+const colors = ["#ef476f","#ffd166","#06d6a0","#118ab2","#073b4c","#ff9f1c","#a29bfe","#ff6b6b"];
+
+/* ================= Elements ================= */
+const flagUK = document.getElementById('flagUK');
+const flagAZ = document.getElementById('flagAZ');
+const startBtn = document.getElementById('startBtn');
+const startScreen = document.getElementById('startScreen');
+const gameScreen = document.getElementById('gameScreen');
+const playerNameInput = document.getElementById('playerNameInput');
+
+const clubCanvas = document.getElementById('clubWheel');
+const posCanvas = document.getElementById('positionWheel');
+const eventCanvas = document.getElementById('eventWheel');
+const nationalCanvas = document.getElementById('nationalWheel');
+const ageCanvas = document.getElementById('ageWheel');
+
+const spinBtn = document.getElementById('spinBtn');
+const resultDiv = document.getElementById('result');
+const historyLog = document.getElementById('historyLog');
+const clearHistoryBtn = document.getElementById('clearHistory');
+
+const bgMusic = document.getElementById('bgMusic');
+const spinSound = document.getElementById('spinSound');
+
+const cardModal = document.getElementById('careerCard');
+const closeCard = document.getElementById('closeCard');
+const closeCardBtn = document.getElementById('closeCardBtn');
+const cardLogo = document.getElementById('cardLogo');
+const cardName = document.getElementById('cardName');
+const cardClub = document.getElementById('cardClub');
+const cardPos = document.getElementById('cardPos');
+const cardNat = document.getElementById('cardNat');
+const cardEvent = document.getElementById('cardEvent');
+const cardStats = document.getElementById('cardStats');
+
+/* ================= Language / UI ================= */
+function setLanguageUI(){
+  if(lang==='az'){
+    document.getElementById('titleMain').innerText = "Öz karyeranı qur";
+    startBtn.innerText = "Başla";
+    spinBtn.innerText = "Çarxı fırlat";
+    document.getElementById('clubLabel').innerText = "Klub";
+    document.getElementById('positionLabel').innerText = "Mövqe";
+    document.getElementById('eventLabel').innerText = "Hadisə";
+    document.getElementById('nationalLabel').innerText = "Milliyət";
+    document.getElementByld('ageLabel').innerText = "Yaş";
+    document.querySelector('.history strong').innerText = "📜 Tarixçə";
+    closeCardBtn.innerText = "Bağla";
+  } else {
+    document.getElementById('titleMain').innerText = "Build your career";
+    startBtn.innerText = "Start";
+    spinBtn.innerText = "Spin Career 🎡";
+    document.getElementById('clubLabel').innerText = "Club";
+    document.getElementById('positionLabel').innerText = "Position";
+    document.getElementById('eventLabel').innerText = "Event";
+    document.getElementById('nationalLabel').innerText = "Nationality";
+    document.getElementByld('nationalLabel').innerText = "Age";
+    document.querySelector('.history strong').innerText = "📜 History";
+    closeCardBtn.innerText = "Close";
+  }
+}
+
+// flag clicks
+flagUK.addEventListener('click', ()=>{
+  lang='en';
+  flagUK.classList.add('flag-selected'); flagAZ.classList.remove('flag-selected');
+  setLanguageUI();
+});
+flagAZ.addEventListener('click', ()=>{
+  lang='az';
+  flagAZ.classList.add('flag-selected'); flagUK.classList.remove('flag-selected');
+  setLanguageUI();
+});
+
+/* ================= Preload Logos =================
+   We'll create image objects for each club and draw them on the wheel.
+   If an image fails to load, we mark it and fallback to text.
+*/
+const clubImgs = {};
+let logosLoaded = 0;
+let logosFailed = 0;
+
+function preloadLogos(callback){
+  let total = clubs.length;
+  clubs.forEach(cl=>{
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = ()=>{ clubImgs[cl.name] = {img, ok:true}; logosLoaded++; if(logosLoaded+logosFailed===total) callback(); };
+    img.onerror = ()=>{ clubImgs[cl.name] = {img:null, ok:false}; logosFailed++; if(logosLoaded+logosFailed===total) callback(); };
+    // Use provided logo link, fallback to Wikipedia PNG thumbnail if necessary
+    img.src = cl.logo;
+    // set a timeout fallback (some hosts slow)
+    setTimeout(()=>{ if(!clubImgs[cl.name]){ clubImgs[cl.name]={img:null,ok:false}; logosFailed++; if(logosLoaded+logosFailed===total) callback(); } },5000);
+  });
+}
+
+/* ================= Draw Wheel with Logos ================= */
+function drawWheelWithLogos(canvas, items, isClub=false){
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  // ensure crisp canvas
+  const W = canvas.width; const H = canvas.height;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + "px"; canvas.style.height = H + "px";
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  const radius = W/2;
+  const arc = 2*Math.PI/items.length;
+  ctx.clearRect(0,0,W,H);
+
+  items.forEach((item,i)=>{
+    const start = i*arc;
+    const end = start + arc;
+    // slice
+    ctx.beginPath();
+    ctx.moveTo(radius,radius);
+    ctx.arc(radius,radius,radius,start,end);
+    ctx.closePath();
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fill();
+
+    // draw logo or text near outer mid of slice
+    const mid = start + arc/2;
+    const imgX = radius + Math.cos(mid) * (radius * 0.58);
+    const imgY = radius + Math.sin(mid) * (radius * 0.58);
+    const imgSize = Math.min(48, radius*0.32);
+
+    if(isClub){
+      const cl = item; // item is object with name
+      const ci = clubImgs[cl.name];
+      if(ci && ci.ok && ci.img){
+        // draw image centered
+        try{
+          ctx.save();
+          // draw circle background for logo
+          ctx.beginPath();
+          ctx.fillStyle = "rgba(255,255,255,0.06)";
+          ctx.arc(imgX, imgY, imgSize/1.6, 0, Math.PI*2);
+          ctx.fill();
+          ctx.closePath();
+          ctx.drawImage(ci.img, imgX - imgSize/2, imgY - imgSize/2, imgSize, imgSize);
+          ctx.restore();
+        }catch(e){
+          // fallback to text
+          ctx.save();
+          ctx.translate(imgX, imgY);
+          ctx.rotate(mid);
+          ctx.fillStyle="#fff"; ctx.font = "10px sans-serif"; ctx.textAlign="center";
+          ctx.fillText(cl.name, 0, 0);
+          ctx.restore();
+        }
+      } else {
+        ctx.save();
+        ctx.translate(imgX, imgY);
+        ctx.rotate(mid);
+        ctx.fillStyle="#fff"; ctx.font = "10px sans-serif"; ctx.textAlign="center";
+        ctx.fillText(cl.name, 0, 0);
+        ctx.restore();
+      }
+    } else {
+      // non-club items (text)
+      ctx.save();
+      ctx.translate(imgX, imgY);
+      ctx.rotate(mid);
+      ctx.fillStyle="#fff"; ctx.font = "12px sans-serif"; ctx.textAlign="center";
+      ctx.fillText(item, 0, 0);
+      ctx.restore();
+    }
+  });
+}
+
+/* ================= Init drawing once logos preloaded ================= */
+preloadLogos(()=> {
+  drawWheelWithLogos(clubCanvas, clubs, true);
+  drawWheelWithLogos(posCanvas, positions, false);
+  drawWheelWithLogos(eventCanvas, events, false);
+  drawWheelWithLogos(nationalCanvas, nations, false);
+  drawWheelWithLogos(ageCanvas, ages, false);
+});
+
+/* ================= Spin Logic ================= */
+function spinWheelDOM(canvas, items, isClub=false){
+  return new Promise(resolve=>{
+    const n = items.length;
+    const slice = 360 / n;
+    const chosen = Math.floor(Math.random()*n);
+    const spins = 4 + Math.floor(Math.random()*4);
+    const center = chosen*slice + slice/2;
+    const final = (360*spins) + (360 - center) + (Math.random()*slice - slice/2);
+    canvas.style.transition = `transform 4s cubic-bezier(.22,.98,.31,1)`;
+    canvas.style.transform = `rotate(${final}deg)`;
+    setTimeout(()=>resolve(chosen), 4100);
+  });
+}
+
+/* ================= Utility ================= */
+function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+
+/* ================= Start Button ================= */
+startBtn.addEventListener('click', ()=>{
+  playerName = (playerNameInput.value && playerNameInput.value.trim()!=="") ? playerNameInput.value.trim() : (lang==='az'?"Oyunçu":"Player");
+  // show game screen
+  startScreen.classList.add('hidden');
+  gameScreen.classList.remove('hidden');
+  setLanguageUI();
+  // try to play music (user initiated click)
+  bgMusic.play().catch(()=>{/* autoplay blocked sometimes */});
+});
+
+/* ================= Spin Button ================= */
+spinBtn.addEventListener('click', async ()=>{
+  if(!playerName) playerName = lang==='az' ? "Oyunçu" : "Player";
+  
+  spinBtn.disabled = true;
+  spinSound.currentTime = 0; 
+  spinSound.play().catch(()=>{});
+  resultDiv.innerHTML = `<div class="small">${lang==='az'?"Çarx dönür...":"Spinning..."}</div>`;
+
+  // Kiçik random offset, wheels üst-üstə düşməsin
+  clubCanvas.style.transition = "transform 0.2s"; clubCanvas.style.transform = `rotate(${randInt(0,360)}deg)`;
+  posCanvas.style.transition = "transform 0.2s"; posCanvas.style.transform = `rotate(${randInt(0,360)}deg)`;
+  eventCanvas.style.transition = "transform 0.2s"; eventCanvas.style.transform = `rotate(${randInt(0,360)}deg)`;
+  nationalCanvas.style.transition = "transform 0.2s"; nationalCanvas.style.transform = `rotate(${randInt(0,360)}deg)`;
+  ageCanvas.style.transition = "transform 0.2s"; ageCanvas.style.transform = `rotate(${randInt(0,360)}deg)`;
+
+  // Spin wheels və Promise.all
+  const cI = spinWheelDOM(clubCanvas, clubs, true);
+  const pI = spinWheelDOM(posCanvas, positions, false);
+  const eI = spinWheelDOM(eventCanvas, events, false);
+  const nI = spinWheelDOM(nationalCanvas, nations, false);
+  const aI = spinWheelDOM(ageCanvas, ages, false);
+
+  const [ci, pi, ei, ni, ai] = await Promise.all([cI,pI,eI,nI,aI]);
+
+  // Seçilmiş nəticələr
+  const club = clubs[ci].name;
+  const clubLogoUrl = clubs[ci].logo;
+  const position = positions[pi];
+  const event = events[ei];
+  const nation = nations[ni];
+  const age = ages[ai];
+
+  // Stats hesabı (mövqeyə görə)
+  let goalsBase = 0;
+  const posLower = position.toLowerCase();
+  if(posLower.includes('forward') || posLower.includes('LW,RW') || posLower.includes('ST')) goalsBase = randInt(80,500);
+  else if(posLower.includes('mid')) goalsBase = randInt(10,200);
+  else if(posLower.includes('def')) goalsBase = randInt(0,70);
+  else goalsBase = randInt(0,20);
+  const assistsBase = Math.max(0, Math.round(goalsBase * (Math.random()*0.6)));
+
+  // Localized labels
+  const nameLabel = (lang==='az')?"Ad":"Name";
+  const clubLabel = (lang==='az')?"Klub":"Club";
+  const posLabel = (lang==='az')?"Mövqe":"Position";
+  const evtLabel = (lang==='az')?"Hadisə":"Event";
+  const natLabel = (lang==='az')?"Milliyət":"Nationality";
+  const ageLabel = (lang==='az')?"Yaş":"Age";
+  const statsLabel = (lang==='az')?"Statistika":"Stats";
+
+  // Result div
+  resultDiv.innerHTML = `<div class="small">
+    <strong>${nameLabel}:</strong> ${playerName}<br>
+    <strong>${clubLabel}:</strong> ${club}<br>
+    <strong>${posLabel}:</strong> ${position}<br>
+    <strong>${evtLabel}:</strong> ${event}<br>
+    <strong>${natLabel}:</strong> ${nation}<br>
+    <strong>${ageLabel}:</strong> ${age}<br>
+    <strong>${statsLabel}:</strong> ⚽ ${goalsBase} · 🎯 ${assistsBase}
+  </div>`;
+
+  // Tarixçə
+  const entry = document.createElement('p');
+  entry.innerText = `${playerName} | ${club} | ${position} | ${event} | ${nation} | ${age} | ⚽${goalsBase} 🎯${assistsBase}`;
+  historyLog.prepend(entry);
+
+const firebaseConfig = {
+  apiKey: "SENIN_API_KEY",
+  authDomain: "project-id.firebaseapp.com",
+  projectId: "project-id",
+  storageBucket: "project-id.appspot.com",
+  messagingSenderId: "xxxx",
+  appId: "xxxx"
+};
+
+  // Oyunçu adı və nəticə
+const playerData = { goals: goalsBase, assists: assistsBase };
+
+// Firebase və ya local storage-a yazmaq
+// Məsələn localStorage üçün:
+let leaderboard = JSON.parse(localStorage.getItem('leaderboard') || "{}");
+leaderboard[playerName] = playerData;
+localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+
+// Leaderboard-u göstərmək
+const sorted = Object.entries(leaderboard)
+  .sort((a,b)=> b[1].goals - a[1].goals)
+  .map(([name,data],i)=> `${i+1}. ${name} - ⚽${data.goals} 🎯${data.assists}`)
+  .join('<br>');
+
+document.getElementById('leaderboardDiv').innerHTML = sorted;
+
+// Karyera kartı göstər
+  setTimeout(()=>{
+    showCareerCard({
+      name: playerName,
+      club,
+      clubLogoUrl,
+      position,
+      event,
+      nation,
+      age,
+      goals: goalsBase,
+      assists: assistsBase
+    });
+    spinBtn.disabled = false;
+  }, 600);
+});
+
+/* ================= Career Card ================= */
+function showCareerCard(data){
+  cardName.innerText = data.name;
+  cardClub.innerText = data.club;
+  cardPos.innerText = data.position;
+  cardNat.innerText = data.nation;
+  cardEvent.innerText = data.event;
+  cardAge.innerText = data.age;
+  cardStats.innerText = `⚽ ${data.goals}  ·  🎯 ${data.assists}`;
+
+ 
+ // set logo (fall back to text if image fails)
+  cardLogo.src = data.clubLogoUrl;
+  cardLogo.onerror = ()=>{ cardLogo.style.display = 'none'; };
+  cardLogo.onload = ()=>{ cardLogo.style.display = 'block'; };
+
+  // show localized title for card labels if az/en required
+  if(lang==='az'){
+    // labels already in small text; main content stays
+  } else {
+    // if english, nothing else to change (we used general values)
+  }
+  // display modal
+  cardModal.style.display = 'block';
+}
+
+/* close card */
+closeCard.addEventListener('click', ()=>{ cardModal.style.display='none'; });
+closeCardBtn.addEventListener('click', ()=>{ cardModal.style.display='none'; });
+
+/* clear history */
+clearHistoryBtn.addEventListener('click', ()=>{ historyLog.innerHTML=''; });
+
+/* Accessibility: pressing Escape closes card */
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='Escape'){ cardModal.style.display='none'; }
+});
+
+/* Make sure UI language set at load */
+setLanguageUI();
+</script>
+</body>
+</html>
